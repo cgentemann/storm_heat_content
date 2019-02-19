@@ -275,6 +275,9 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
         ds_all.close()
         
 #        ds_all = xr.merge([ds_storm_ccmp, ds_storm_mld, ds_storm_lhf, ds_storm_shf, ds_storm_ta, ds_storm_qa, ds_storm_sst])
+        if iwrap==1:
+            ds_all.coords['lon'] = np.mod(ds_all['lon'], 360)
+            ds_storm_info['lon'] = np.mod(ds_storm_info['lon'], 360)
 
         #calculate mask
         print('caluculating mask')
