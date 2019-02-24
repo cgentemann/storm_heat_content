@@ -5,6 +5,7 @@
 
 
 #functions for running storm data
+#functions for running storm data
 def interpolate_storm_path(dsx):
     import numpy as np
     from scipy import interpolate
@@ -17,12 +18,17 @@ def interpolate_storm_path(dsx):
     ynew = []
     tnew = []
     xnew = []
+    wnew = []
+    pnew = []
+    bnew = []
     dsx['lon'] = (dsx.lon-180) % 360 - 180 #put -180 to 180
     for istep in range(1,dsx.lon.shape[1]):
         dif_lat = dsx.lat[0,istep]-dsx.lat[0,istep-1]
         dif_lon = dsx.lon[0,istep]-dsx.lon[0,istep-1]
         x,y,t = dsx.lon[0,istep-1:istep+1].values,dsx.lat[0,istep-1:istep+1].values,dsx.time[0,istep-1:istep+1].values
+        w,p,b = dsx.wind[0,istep-1:istep+1].values,dsx.pres[0,istep-1:istep+1].values,dsx.basin[0,istep-1:istep+1].values
         x1,y1,t1 = dsx.lon[0,istep-1:istep].values,dsx.lat[0,istep-1:istep].values,dsx.time[0,istep-1:istep].values
+        w1,p1,b1 = dsx.wind[0,istep-1:istep].values,dsx.pres[0,istep-1:istep].values,dsx.basin[0,istep-1:istep].values
         if abs(dif_lat)>abs(dif_lon):
             isign = np.sign(dif_lat)
             if abs(dif_lat)>0.75:
@@ -31,9 +37,16 @@ def interpolate_storm_path(dsx):
                 xnew1 = f(ynew1)
                 f = interpolate.interp1d(y, t, assume_sorted=False)
                 tnew1 = f(ynew1)
+                f = interpolate.interp1d(y, w, assume_sorted=False)
+                wnew1 = f(ynew1)
+                f = interpolate.interp1d(y, p, assume_sorted=False)
+                pnew1 = f(ynew1)
+                f = interpolate.interp1d(y, b, assume_sorted=False)
+                bnew1 = f(ynew1)
             else:
-                xnew1,ynew1,tnew1 = x1,y1,t1
+                xnew1,ynew1,tnew1,wnew1,pnew1,bnew1 = x1,y1,t1,w1,p1,b1
             xnew,ynew,tnew = np.append(xnew,xnew1),np.append(ynew,ynew1),np.append(tnew,tnew1) 
+            wnew,pnew,bnew = np.append(wnew,wnew1),np.append(pnew,pnew1),np.append(bnew,bnew1) 
         else:
             isign = np.sign(dif_lon)
             if abs(dif_lon)>0.75:
@@ -49,19 +62,29 @@ def interpolate_storm_path(dsx):
                 ynew1 = f(xnew1)
                 f = interpolate.interp1d(x, t, assume_sorted=False)
                 tnew1 = f(xnew1)
+                f = interpolate.interp1d(x, w, assume_sorted=False)
+                wnew1 = f(xnew1)
+                f = interpolate.interp1d(x, p, assume_sorted=False)
+                pnew1 = f(xnew1)
+                f = interpolate.interp1d(x, b, assume_sorted=False)
+                bnew1 = f(xnew1)
                 xnew1 = (xnew1 - 180) % 360 - 180 #put -180 to 180
             else:
                 xnew1,ynew1,tnew1 = x1,y1,t1
+                wnew1,pnew1,bnew1 = w1,p1,b1
             xnew,ynew,tnew = np.append(xnew,xnew1),np.append(ynew,ynew1),np.append(tnew,tnew1) 
+            wnew,pnew,bnew = np.append(wnew,wnew1),np.append(pnew,pnew1),np.append(bnew,bnew1) 
 #remove any repeated points
     ilen=xnew.size
-    outputx,outputy,outputt=[],[],[]
+    outputx,outputy,outputt,outputw,outputp,outputb=[],[],[],[],[],[]
     for i in range(ilen-1):
         if (xnew[i]==xnew[i+1]) and (ynew[i]==ynew[i+1]):
             continue
         else:
             outputx,outputy,outputt = np.append(outputx,xnew[i]),np.append(outputy,ynew[i]),np.append(outputt,tnew[i])
+            outputw,outputp,outputb = np.append(outputw,wnew[i]),np.append(outputp,pnew[i]),np.append(outputb,bnew[i])
     xnew,ynew,tnew=outputx,outputy,outputt
+    wnew,pnew,bnew=outputw,outputp,outputb
 #put into xarray
     i2,j2=xnew.shape[0],1
     tem = np.expand_dims(xnew, axis=0)
@@ -70,8 +93,31 @@ def interpolate_storm_path(dsx):
     yy = xr.DataArray(tem.T,dims=['i2','j2'])
     tem = np.expand_dims(tnew, axis=0)
     tt = xr.DataArray(tem.T,dims=['i2','j2'])
-    dsx_new = xr.Dataset({'lon':xx.T,'lat':yy.T,'time':tt.T})
+    tem = np.expand_dims(wnew, axis=0)
+    ww = xr.DataArray(tem.T,dims=['i2','j2'])
+    tem = np.expand_dims(pnew, axis=0)
+    pp = xr.DataArray(tem.T,dims=['i2','j2'])
+    tem = np.expand_dims(bnew, axis=0)
+    bb = xr.DataArray(tem.T,dims=['i2','j2'])
+    dsx_new = xr.Dataset({'lon':xx.T,'lat':yy.T,'time':tt.T,'wind':ww.T,'pres':pp.T,'basin':bb.T})
+
+#add storm translation speed to storm information
+    tdim_storm = dsx_new.time.size
+    storm_speed = dsx_new.time.copy(deep=True)*np.nan    
+    for i in range(0,tdim_storm-1):
+        coords_1 = (dsx_new.lat[i], ds_storm_info.lon[i])  
+        coords_2 = (dsx_new.lat[i+1], ds_storm_info.lon[i+1])  
+        arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
+        storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i])))  
+        storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i+1])))  
+        arclen_time = storm_date2 - storm_date1
+        arclen_hr = arclen_time / np.timedelta64(1, 'h')
+        storm_speed[i]=arclen_temp/(arclen_hr)
+    storm_speed[-1]=storm_speed[-2]
+    dsx_new['storm_speed']=storm_speed   
+    
     return dsx_new
+
 
 def get_dist_grid(lat_point,lon_point,lat_grid,lon_grid):
     import geopy.distance
