@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[16]:
+# In[1]:
 
 
 #from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
@@ -51,6 +51,8 @@ print ('processing year:', input_year)
 # In[ ]:
 
 
+#input_year = 2003
+#input_storm = 2
 date_1858 = dt.datetime(1858,11,17,0,0,0) # start date is 11/17/1958
 isave_mld_year = 0 #init MLD monthly data read flag
 for root, dirs, files in os.walk(dir_storm_info, topdown=False):
@@ -66,6 +68,8 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
 
         if iyr_storm!=input_year:
             continue
+#        if input_storm!=inum_storm:
+#            continue
 
 #        if iyr_storm!=2007: # or iyr_storm<2003:
 #            continue
@@ -76,7 +80,9 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
         lons = (lons + 180) % 360 - 180 #put -180 to 180
         dysince = ds_storm_info.time
         ds_storm_info.close()
-        
+#        print(ds_storm_info)
+#        break
+
 #make lat and lon of storm onto 25 km grid for below
         lons = (((lons - .125)/.25+1).astype(int)-1)*.25+.125
         lats = (((lats + 89.875)/.25+1).astype(int)-1)*.25-89.875
@@ -108,14 +114,14 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
         for i in range(0,tdim):
             tem_date[i]=date_1858+dt.timedelta(days=float(dysince[0,i].values))  #create new time array that can be queried for year etc
         min_date = min(tem_date)+dt.timedelta(days=-5)
-        max_date = max(tem_date)+dt.timedelta(days=5)
+#        max_date = max(tem_date)+dt.timedelta(days=5)
         minjdy = min_date.timetuple().tm_yday  #create new time array that can be queried for year etc
         minyear =min_date.year #create new time array that can be queried for year etc
         minmon =min_date.month #create new time array that can be queried for year etc
         minday =min_date.day #create new time array that can be queried for year etc
-        maxjdy = max_date.timetuple().tm_yday  #create new time array that can be queried for year etc
-        maxyear =max_date.year  #create new time array that can be queried for year etc
-        print(minyear,minjdy,maxyear,maxjdy)
+#        maxjdy = max_date.timetuple().tm_yday  #create new time array that can be queried for year etc
+#        maxyear =max_date.year  #create new time array that can be queried for year etc
+        print(minyear,minjdy)#,maxyear,maxjdy)
         
         dif = max(tem_date)-min(tem_date)
         tdim=int(dif.days)+45             #calculate ssts for 30 days after storm
@@ -193,15 +199,28 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
                 ds_storm_ccmp = xr.concat([ds_storm_ccmp,ds_storm],dim='time')
               
 #ocean mixed layer depth from monthly data GODAS NOAA, lon 0 to 360, monthly data so interp to day
-            #dir_godas='https://www.esrl.noaa.gov/psd/thredds/dodsC/Datasets/godas/'
+#this is monthly data (all other data daily) so need to read in year before and year after
+#so any storms <1/15 or greater than 12/15 in the year still get data
+#dir_godas='https://www.esrl.noaa.gov/psd/thredds/dodsC/Datasets/godas/'
             dir_godas = 'f:/data/model_data/godas/'
             if isave_mld_year != storm_date.year:
-                filename = dir_godas + 'dbss_obml.' + syr + '.nc'
+                filename = dir_godas + 'dbss_obml.' + str(storm_date.year-1) + '.nc'
                 ds_day_mld=xr.open_dataset(filename)
+                ds_day_mld['time']=ds_day_mld.time+np.timedelta64(14,'D')  #data provider gave 1st day of ave in time 
+                ds_day_mld.close()
+                filename = dir_godas + 'dbss_obml.' + str(storm_date.year) + '.nc'
+                ds_day_mld2=xr.open_dataset(filename)
+                ds_day_mld2['time']=ds_day_mld2.time+np.timedelta64(14,'D')  #data provider gave 1st day of ave in time 
+                ds_day_mld2.close()
+                ds_day_mld = xr.concat([ds_day_mld,ds_day_mld2],dim='time')
+                filename = dir_godas + 'dbss_obml.' + str(storm_date.year+1) + '.nc'
+                ds_day_mld2=xr.open_dataset(filename)
+                ds_day_mld2['time']=ds_day_mld2.time+np.timedelta64(14,'D')  #data provider gave 1st day of ave in time 
+                ds_day_mld2.close()
+                ds_day_mld = xr.concat([ds_day_mld,ds_day_mld2],dim='time')
                 if iwrap==0:
                     ds_day_mld.coords['lon'] = (ds_day_mld.coords['lon'] + 180) % 360 - 180
                     ds_day_mld = ds_day_mld.sortby(ds_day_mld.lon)
-                ds_day_mld.close()
                 isave_mld_year = storm_date.year
             ds_storm = ds_day_mld.interp(time = storm_date, lat = new_lat_storm,lon = new_lon_storm)
             if iwrap==1:
@@ -299,16 +318,10 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
 #        dtem=xr.DataArray(position, coords={'lat': ds_mask.lat.values, 'lon':ds_mask.lon.values}, dims=('lat', 'lon'))
 #        ds_all['side_of_storm']=dtem
 
-        
         if iwrap==1:
             ds_all.coords['lon'] = np.mod(ds_all['lon'], 360)
             ds_storm_info['lon'] = np.mod(ds_storm_info['lon'], 360)
 
-#        filename = dir_out + str(iyr_storm) + '/' + str(inum_storm).zfill(3) + '_combined_data.nc'
-#        ds_all = xr.open_dataset(filename)
-#        ds_all.close()
-                
-            
         #calculate mask
         print('caluculating mask')
         ds_mask = calculate_storm_mask(ds_all,lats,lons)
@@ -325,33 +338,114 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
         dtem=xr.DataArray(position, coords={'lat': ds_mask.lat.values, 'lon':ds_mask.lon.values}, dims=('lat', 'lon'))
         ds_all['side_of_storm']=dtem
 
+#add storm translation speed to storm information
+        tdim_storm = ds_storm_interp.time.size
+        storm_speed = ds_storm_interp.time.copy(deep=True)*np.nan    
+        for i in range(0,tdim_storm-1):
+            coords_1 = (ds_storm_interp.lat[0,i], ds_storm_interp.lon[0,i])  
+            coords_2 = (ds_storm_interp.lat[0,i+1], ds_storm_interp.lon[0,i+1])  
+            arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
+            storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(ds_storm_interp.time[0,i])))  
+            storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(ds_storm_interp.time[0,i+1])))  
+            arclen_time = storm_date2 - storm_date1
+            arclen_hr = arclen_time / np.timedelta64(1, 'h')
+            storm_speed[0,i]=arclen_temp/(arclen_hr)
+        storm_speed[0,-1]=storm_speed[0,-2]
+        ds_storm_interp['storm_speed']=storm_speed
+        
+        xdim,ydim,tdim = ds_all.lon.shape[0],ds_all.lat.shape[0],ds_all.time.shape[0]
+        wtem=np.empty([ydim,xdim])
+        ptem=np.empty([ydim,xdim])
+        stem=np.empty([ydim,xdim])
+        for i in range(0,xdim):
+            for j in range(0,ydim):
+                storm_index = ds_all.closest_storm_index[j,i].data
+                wtem[j,i]=ds_storm_interp.wind[0,int(storm_index)].data
+                ptem[j,i]=ds_storm_interp.pres[0,int(storm_index)].data
+                stem[j,i]=ds_storm_interp.storm_speed[0,int(storm_index)].data
+        xrtem=xr.DataArray(wtem, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))        
+        ds_all['wmo_storm_wind']=xrtem
+        xrtem=xr.DataArray(ptem, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))        
+        ds_all['wmo_storm_pres']=xrtem
+        xrtem=xr.DataArray(stem, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))        
+        ds_all['wmo_storm_speed']=xrtem
+        
         #find max sst 5 days before storm location
-        #first create an array with the storm crossover time (from nearest point) as an array        
-        #now use array of storm time to calculate prestorm sst
-        ydim,xdim=ds_all.lat.shape[0], ds_all.lon.shape[0]
-#        print(ydim,xdim)
-#        print(ds_all)
-        sdate = np.empty([ydim,xdim], dtype=dt.datetime)   
-
+        #first create an array with the storm crossover time (from nearest point) as an array
+        sdate = np.empty([ydim,xdim], dtype=dt.datetime)    
         for i in range(0,xdim):
             for j in range(0,ydim):
                 tem=date_1858+dt.timedelta(days=float(ds_all.closest_storm_time[j,i])) 
                 sdate[j,i]=np.datetime64(tem)
-        xsdate=xr.DataArray(sdate, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))        
+        xsdate=xr.DataArray(sdate, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))    
+        ds_all['closest_storm_time_np64']=xsdate
+        #now use array of storm time to calculate prestorm sst
         sst0 = ds_all.dist_from_storm_km.copy(deep=True)
         for i in range(0,xdim):
             for j in range(0,ydim):
+                #sst0[j,i] = ds_data.analysed_sst[:,j,i].interp(time=xsdate[j,i])
                 sst0[j,i] = ds_all.analysed_sst[:,j,i].sel(time=slice(xsdate[j,i]-np.timedelta64(5,'D'),xsdate[j,i])).max()
         ds_all['sst_prestorm']=sst0
 
+#now calculate coldwake information
+        if abs(ds_all.lon[-1]-ds_all.lon[0])>180:
+            ds_all.coords['lon'] = np.mod(ds_all['lon'], 360)
+            ds_storm_interp['lon'] = np.mod(ds_storm_interp['lon'], 360)
+        max_lat = ds_storm_interp.lat.max()
+
+    #remove all data outsice 100km/800km or cold wake >0 or <-10
+        if max_lat<0:
+            cond = ((((ds_all.dist_from_storm_km<100) & (ds_all.side_of_storm<=0)) | 
+            ((ds_all.dist_from_storm_km<800) & (ds_all.side_of_storm>0))) )       
+        else:
+            cond = ((((ds_all.dist_from_storm_km<800) & (ds_all.side_of_storm<0)) | 
+            ((ds_all.dist_from_storm_km<100) & (ds_all.side_of_storm>=0))))            
+        subset = ds_all.where(cond)
+          
+        xdim,ydim,tdim = ds_all.lon.shape[0],ds_all.lat.shape[0],ds_all.time.shape[0]
+        date_1858 = dt.datetime(1858,11,17,0,0,0) # start date is 11/17/1958
+        coldwake_max=ds_all.sst_prestorm.copy(deep=True)*np.nan
+        coldwake_maxindex=ds_all.sst_prestorm.copy(deep=True)*np.nan
+        coldwake_hrtomaxcold=ds_all.sst_prestorm.copy(deep=True)*np.nan
+        coldwake_recovery=ds_all.sst_prestorm.copy(deep=True)*np.nan
+#go through entire array lat/lon dims
+        for i in range(0,xdim):
+            for j in range(0,ydim):
+                 #calculate the storm time for the closest collocated storm point then find the combined data index for closest time
+                #this gives you the combined data storm index cross over
+                storm_date64 = ds_all.closest_storm_time_np64[j,i]
+                if np.isnan(subset.analysed_sst[0,j,i]):  #don't process masked values
+                    continue
+                time_diff = subset.time-storm_date64
+                storm_index = np.argmin(abs(time_diff)).data
+                #now look for cold wake for 1 day before strom to 5 days after strom
+                #caluclate hours to cold wake, maximum cold wake, hours until it returns to prestorm sst
+                #there is NO filter on wheither coldwake large enough here, just does all points
+                istart,iend = int(storm_index),int(storm_index)+5
+                if iend>tdim:
+                    iend=tdim
+                if np.isnan(subset.sst_prestorm[j,i]):
+                    continue
+                coldwake_max[j,i] = (subset.analysed_sst[istart:iend,j,i]-subset.sst_prestorm[j,i]).min()
+                itmp = np.argmin(subset.analysed_sst[istart:iend,j,i]-subset.sst_prestorm[j,i]).data
+                coldwake_maxindex[j,i]=istart+itmp
+                delay = subset.time[istart+itmp].values-subset.time[istart].values
+                coldwake_hrtomaxcold[j,i]=delay / np.timedelta64(1, 'h')
+                for k in range(istart+itmp,tdim):
+                    sst_change = subset.analysed_sst[k,j,i]-subset.sst_prestorm[j,i]
+                    if sst_change>-0.2:
+                        break
+                delay = subset.time[k].values-subset.time[istart].values
+                coldwake_recovery[j,i]=delay / np.timedelta64(1, 'D')
+
+        ds_all['coldwake_max']=coldwake_max
+        ds_all['coldwake_maxindex']=coldwake_maxindex
+        ds_all['coldwake_hrtomaxcold']=coldwake_hrtomaxcold
+        ds_all['coldwake_dytorecovery']=coldwake_recovery
         
         filename = dir_out + str(iyr_storm) + '/' + str(inum_storm).zfill(3) + '_combined_data.nc'
         ds_all.to_netcdf(filename)
         print('out:',filename)
-     # filename = dir_out + str(iyr_storm) + '/' + 'str(inum_storm)' + '_other_data.nc'
-     #   filename = dir_out + str(iyr_storm) + '/' + str(inum_storm).zfill(3) + '_combined_masking_data.nc'
-     #   ds_all.to_netcdf(filename)
-     #   print('out:',filename)
         filename = dir_out + str(iyr_storm) + '/' + str(inum_storm).zfill(3) + '_interpolated_track.nc'
         ds_storm_interp.to_netcdf(filename)
         print('out:',filename)

@@ -102,19 +102,19 @@ def interpolate_storm_path(dsx):
     dsx_new = xr.Dataset({'lon':xx.T,'lat':yy.T,'time':tt.T,'wind':ww.T,'pres':pp.T,'basin':bb.T})
 
 #add storm translation speed to storm information
-    tdim_storm = dsx_new.time.size
-    storm_speed = dsx_new.time.copy(deep=True)*np.nan    
-    for i in range(0,tdim_storm-1):
-        coords_1 = (dsx_new.lat[i], dsx_new.lon[i])  
-        coords_2 = (dsx_new.lat[i+1], dsx_new.lon[i+1])  
-        arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
-        storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i])))  
-        storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i+1])))  
-        arclen_time = storm_date2 - storm_date1
-        arclen_hr = arclen_time / np.timedelta64(1, 'h')
-        storm_speed[i]=arclen_temp/(arclen_hr)
-    storm_speed[-1]=storm_speed[-2]
-    dsx_new['storm_speed']=storm_speed   
+#    tdim_storm = dsx_new.time.size
+#    storm_speed = dsx_new.time.copy(deep=True)*np.nan    
+#    for i in range(0,tdim_storm-1):
+#        coords_1 = (dsx_new.lat[i], dsx_new.lon[i])  
+#        coords_2 = (dsx_new.lat[i+1], dsx_new.lon[i+1])  
+#        arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
+#        storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i])))  
+#        storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i+1])))  
+#        arclen_time = storm_date2 - storm_date1
+#        arclen_hr = arclen_time / np.timedelta64(1, 'h')
+#        storm_speed[i]=arclen_temp/(arclen_hr)
+#    storm_speed[-1]=storm_speed[-2]
+#    dsx_new['storm_speed']=storm_speed   
     
     return dsx_new
 
@@ -143,6 +143,7 @@ def closest_dist(ds_in,ds_storm):
 # point given as tla,tlo.... storm is in the program
 # initialize distances (in km)
  #   ds_storm['lon'] = (ds_storm.lon + 180) % 360 - 180
+#    print('here')
     dsx_input = ds_storm.copy(deep=True)
     ds_storm_new = interpolate_storm_path(dsx_input)       
     tdim,xdim,ydim=ds_storm_new.lat.shape[1], ds_in.analysed_sst[0,:,0].shape[0], ds_in.analysed_sst[0,0,:].shape[0]
