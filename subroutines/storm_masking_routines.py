@@ -105,8 +105,8 @@ def interpolate_storm_path(dsx):
     tdim_storm = dsx_new.time.size
     storm_speed = dsx_new.time.copy(deep=True)*np.nan    
     for i in range(0,tdim_storm-1):
-        coords_1 = (dsx_new.lat[i], ds_storm_info.lon[i])  
-        coords_2 = (dsx_new.lat[i+1], ds_storm_info.lon[i+1])  
+        coords_1 = (dsx_new.lat[i], dsx_new.lon[i])  
+        coords_2 = (dsx_new.lat[i+1], dsx_new.lon[i+1])  
         arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
         storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i])))  
         storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i+1])))  
