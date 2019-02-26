@@ -427,6 +427,8 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
                 if np.isnan(subset.sst_prestorm[j,i]):
                     continue
                 coldwake_max[j,i] = (subset.analysed_sst[istart:iend,j,i]-subset.sst_prestorm[j,i]).min()
+                if all(np.isnan(subset.analysed_sst[istart:iend,j,i])):
+                    continue
                 itmp = np.argmin(subset.analysed_sst[istart:iend,j,i]-subset.sst_prestorm[j,i]).data
                 coldwake_maxindex[j,i]=istart+itmp
                 delay = subset.time[istart+itmp].values-subset.time[istart].values
