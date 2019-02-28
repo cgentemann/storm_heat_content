@@ -8,13 +8,18 @@
 #functions for running storm data
 def interpolate_storm_path(dsx):
     import numpy as np
+    import geopy.distance
     from scipy import interpolate
     import xarray as xr
+    import datetime as dt
+    
     #after calculating the distance from the storm it became clear that the storm data is every 6 hours, no matter 
     #how much it may have moved.  So if the storm moved 300 km in 6 hr, when calculating the distance to the storm
     #there were points on the storm track that showed large distances because of the separation to the 6hrly storm points
     #this subroutine interpolates the storm path onto a higher spatial resolution
     #the new storm dataset is carefully put into an identical format with i2 and j2 as dims to match the old format
+
+    date_1858 = dt.datetime(1858,11,17,0,0,0) # start date is 11/17/1958
     ynew = []
     tnew = []
     xnew = []
@@ -74,18 +79,27 @@ def interpolate_storm_path(dsx):
                 wnew1,pnew1,bnew1 = w1,p1,b1
             xnew,ynew,tnew = np.append(xnew,xnew1),np.append(ynew,ynew1),np.append(tnew,tnew1) 
             wnew,pnew,bnew = np.append(wnew,wnew1),np.append(pnew,pnew1),np.append(bnew,bnew1) 
-#remove any repeated points
+    x1,y1,t1 = dsx.lon[0,-1].values,dsx.lat[0,-1].values,dsx.time[0,-1].values
+    w1,p1,b1 = dsx.wind[0,-1].values,dsx.pres[0,-1].values,dsx.basin[0,-1].values
+    xnew1,ynew1,tnew1 = x1,y1,t1
+    wnew1,pnew1,bnew1 = w1,p1,b1
+    xnew,ynew,tnew = np.append(xnew,xnew1),np.append(ynew,ynew1),np.append(tnew,tnew1) 
+    wnew,pnew,bnew = np.append(wnew,wnew1),np.append(pnew,pnew1),np.append(bnew,bnew1) 
+    #print(xnew)
+    #remove any repeated points
     ilen=xnew.size
     outputx,outputy,outputt,outputw,outputp,outputb=[],[],[],[],[],[]
-    for i in range(ilen-1):
+    for i in range(0,ilen-1):
         if (xnew[i]==xnew[i+1]) and (ynew[i]==ynew[i+1]):
             continue
         else:
             outputx,outputy,outputt = np.append(outputx,xnew[i]),np.append(outputy,ynew[i]),np.append(outputt,tnew[i])
             outputw,outputp,outputb = np.append(outputw,wnew[i]),np.append(outputp,pnew[i]),np.append(outputb,bnew[i])
+    outputx,outputy,outputt = np.append(outputx,xnew[-1]),np.append(outputy,ynew[-1]),np.append(outputt,tnew[-1])
+    outputw,outputp,outputb = np.append(outputw,wnew[-1]),np.append(outputp,pnew[-1]),np.append(outputb,bnew[-1])
     xnew,ynew,tnew=outputx,outputy,outputt
     wnew,pnew,bnew=outputw,outputp,outputb
-#put into xarray
+    #put into xarray
     i2,j2=xnew.shape[0],1
     tem = np.expand_dims(xnew, axis=0)
     xx = xr.DataArray(tem.T,dims=['i2','j2'])
@@ -101,20 +115,20 @@ def interpolate_storm_path(dsx):
     bb = xr.DataArray(tem.T,dims=['i2','j2'])
     dsx_new = xr.Dataset({'lon':xx.T,'lat':yy.T,'time':tt.T,'wind':ww.T,'pres':pp.T,'basin':bb.T})
 
-#add storm translation speed to storm information
-#    tdim_storm = dsx_new.time.size
-#    storm_speed = dsx_new.time.copy(deep=True)*np.nan    
-#    for i in range(0,tdim_storm-1):
-#        coords_1 = (dsx_new.lat[i], dsx_new.lon[i])  
-#        coords_2 = (dsx_new.lat[i+1], dsx_new.lon[i+1])  
-#        arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
-#        storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i])))  
-#        storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[i+1])))  
-#        arclen_time = storm_date2 - storm_date1
-#        arclen_hr = arclen_time / np.timedelta64(1, 'h')
-#        storm_speed[i]=arclen_temp/(arclen_hr)
-#    storm_speed[-1]=storm_speed[-2]
-#    dsx_new['storm_speed']=storm_speed   
+    #add storm translation speed to storm information
+    tdim_storm = dsx_new.time.size
+    storm_speed = dsx_new.time.copy(deep=True)*np.nan    
+    for i in range(0,tdim_storm-1):
+        coords_1 = (dsx_new.lat[0,i], dsx_new.lon[0,i])  
+        coords_2 = (dsx_new.lat[0,i+1], dsx_new.lon[0,i+1])  
+        arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
+        storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[0,i])))  
+        storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(dsx_new.time[0,i+1])))  
+        arclen_time = storm_date2 - storm_date1
+        arclen_hr = arclen_time / np.timedelta64(1, 'h')
+        storm_speed[0,i]=arclen_temp/(arclen_hr)
+    storm_speed[0,-1]=storm_speed[0,-2]
+    dsx_new['storm_speed_kmhr']=storm_speed   
     
     return dsx_new
 

@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
 #from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
 import os
 import time
@@ -14,6 +8,9 @@ import pandas
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import cartopy.crs as ccrs
+dir_storm_wmo='F:/data/tc_wakes/ibtracks/year/'
+
 ####################you will need to change some paths here!#####################
 #list of input directories
 dir_storm_info='f:/data/tc_wakes/database/info/'
@@ -40,19 +37,9 @@ from storm_masking_routines import get_dist_grid
 from storm_masking_routines import closest_dist
 from storm_masking_routines import calculate_storm_mask
 
-
-# In[ ]:
-
-
 input_year=int(str(sys.argv[1]))
 print ('processing year:', input_year)
 
-
-# In[ ]:
-
-
-#input_year = 2003
-#input_storm = 2
 date_1858 = dt.datetime(1858,11,17,0,0,0) # start date is 11/17/1958
 isave_mld_year = 0 #init MLD monthly data read flag
 for root, dirs, files in os.walk(dir_storm_info, topdown=False):
@@ -81,6 +68,9 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
         dysince = ds_storm_info.time
         ds_storm_info.close()
 #        print(ds_storm_info)
+#        break
+#        ds_storm_interp = interpolate_storm_path(ds_storm_info)
+#        print(ds_storm_interp)
 #        break
 
 #make lat and lon of storm onto 25 km grid for below
@@ -156,25 +146,25 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
             else:
                 ds_storm_sst = xr.concat([ds_storm_sst,ds_storm],dim='time')
 
-#sst climatology  --- this isn't used, should remove from dataset in next round
-#            if storm_date.timetuple().tm_yday==366:
-#                sjdy = '365'
-#            filename='F:/data/sst/cmc/CMC0.2deg/v2/climatology/clim1993_2016' + sjdy.zfill(3) + '-CMC-L4_GHRSST-SSTfnd-CMC0.2deg-GLOB-v02.0-fv02.0.nc'
-#            ds_day=xr.open_dataset(filename,drop_variables=['analysis_error','sea_ice_fraction','sq_sst'])
-#            ds_day = ds_day.rename({'analysed_sst':'analysed_sst_clim','mask':'mask_clim'}) #, inplace = True)            
-#            if iwrap==1:  #data is -180 to 180 for sst, so need to bring to 0 to 360 when wrapped
-#                ds_day.coords['lon'] = np.mod(ds_day['lon'], 360)
-#                ds_day = ds_day.sortby(ds_day.lon)
-#            ds_day.close()
-#            ds_day = ds_day.where(ds_day['mask_clim'] == 1.) 
-#            ds_storm = ds_day.interp(lat = new_lat_storm,lon = new_lon_storm)
-#            ds_storm = ds_storm.assign_coords(time=storm_date)
-#            if iwrap==1:
-#                ds_storm.coords['lon'] = (ds_storm.coords['lon'] + 180) % 360 - 180
-#            if i==0:
-#                ds_storm_sst_clim = ds_storm
-#            else:
-#                ds_storm_sst_clim = xr.concat([ds_storm_sst_clim,ds_storm],dim='time')           
+#sst climatology  
+            if storm_date.timetuple().tm_yday==366:
+                sjdy = '365'
+            filename='F:/data/sst/cmc/CMC0.2deg/v2/climatology/clim1993_2016' + sjdy.zfill(3) + '-CMC-L4_GHRSST-SSTfnd-CMC0.2deg-GLOB-v02.0-fv02.0.nc'
+            ds_day=xr.open_dataset(filename,drop_variables=['analysis_error','sea_ice_fraction','sq_sst'])
+            ds_day = ds_day.rename({'analysed_sst':'analysed_sst_clim','mask':'mask_clim'}) #, inplace = True)            
+            if iwrap==1:  #data is -180 to 180 for sst, so need to bring to 0 to 360 when wrapped
+                ds_day.coords['lon'] = np.mod(ds_day['lon'], 360)
+                ds_day = ds_day.sortby(ds_day.lon)
+            ds_day.close()
+            ds_day = ds_day.where(ds_day['mask_clim'] == 1.) 
+            ds_storm = ds_day.interp(lat = new_lat_storm,lon = new_lon_storm)
+            ds_storm = ds_storm.assign_coords(time=storm_date)
+            if iwrap==1:
+                ds_storm.coords['lon'] = (ds_storm.coords['lon'] + 180) % 360 - 180
+            if i==0:
+                ds_storm_sst_clim = ds_storm
+            else:
+                ds_storm_sst_clim = xr.concat([ds_storm_sst_clim,ds_storm],dim='time')           
             
 #ccmp wind data, no masked data, a complete field
 #            lyr, idyjl = 2015,1
@@ -300,7 +290,7 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
                 ds_storm_ta = xr.concat([ds_storm_ta,ds_storm],dim='time')
                 
 #        ds_all = xr.merge([ds_storm_ccmp, ds_storm_mld, ds_storm_lhf, ds_storm_shf, ds_storm_ta, ds_storm_qa, ds_storm_sst, ds_storm_sst_clim])
-        ds_all = xr.merge([ds_storm_ccmp, ds_storm_mld, ds_storm_lhf, ds_storm_shf, ds_storm_ta, ds_storm_qa, ds_storm_sst])
+        ds_all = xr.merge([ds_storm_ccmp, ds_storm_mld, ds_storm_lhf, ds_storm_shf, ds_storm_ta, ds_storm_qa, ds_storm_sst,ds_storm_sst_clim])
 
         #calculate mask
 #        print('caluculating mask')
@@ -337,22 +327,7 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
         ds_all['closest_storm_time']=dtem
         dtem=xr.DataArray(position, coords={'lat': ds_mask.lat.values, 'lon':ds_mask.lon.values}, dims=('lat', 'lon'))
         ds_all['side_of_storm']=dtem
-
-#add storm translation speed to storm information
-        tdim_storm = ds_storm_interp.time.size
-        storm_speed = ds_storm_interp.time.copy(deep=True)*np.nan    
-        for i in range(0,tdim_storm-1):
-            coords_1 = (ds_storm_interp.lat[0,i], ds_storm_interp.lon[0,i])  
-            coords_2 = (ds_storm_interp.lat[0,i+1], ds_storm_interp.lon[0,i+1])  
-            arclen_temp = geopy.distance.geodesic(coords_1, coords_2).km  #distance in km  
-            storm_date1 = np.datetime64(date_1858 + dt.timedelta(days=float(ds_storm_interp.time[0,i])))  
-            storm_date2 = np.datetime64(date_1858 + dt.timedelta(days=float(ds_storm_interp.time[0,i+1])))  
-            arclen_time = storm_date2 - storm_date1
-            arclen_hr = arclen_time / np.timedelta64(1, 'h')
-            storm_speed[0,i]=arclen_temp/(arclen_hr)
-        storm_speed[0,-1]=storm_speed[0,-2]
-        ds_storm_interp['storm_speed']=storm_speed
-        
+       
         xdim,ydim,tdim = ds_all.lon.shape[0],ds_all.lat.shape[0],ds_all.time.shape[0]
         wtem=np.empty([ydim,xdim])
         ptem=np.empty([ydim,xdim])
@@ -362,13 +337,13 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
                 storm_index = ds_all.closest_storm_index[j,i].data
                 wtem[j,i]=ds_storm_interp.wind[0,int(storm_index)].data
                 ptem[j,i]=ds_storm_interp.pres[0,int(storm_index)].data
-                stem[j,i]=ds_storm_interp.storm_speed[0,int(storm_index)].data
+                stem[j,i]=ds_storm_interp.storm_speed_kmhr[0,int(storm_index)].data
         xrtem=xr.DataArray(wtem, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))        
         ds_all['wmo_storm_wind']=xrtem
         xrtem=xr.DataArray(ptem, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))        
         ds_all['wmo_storm_pres']=xrtem
         xrtem=xr.DataArray(stem, coords={'lat': ds_all.lat.values, 'lon':ds_all.lon.values}, dims=('lat', 'lon'))        
-        ds_all['wmo_storm_speed']=xrtem
+        ds_all['wmo_storm_speed_kmhr']=xrtem
         
         #find max sst 5 days before storm location
         #first create an array with the storm crossover time (from nearest point) as an array
@@ -381,12 +356,16 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
         ds_all['closest_storm_time_np64']=xsdate
         #now use array of storm time to calculate prestorm sst
         sst0 = ds_all.dist_from_storm_km.copy(deep=True)
+        sst0_clim_anom = ds_all.dist_from_storm_km.copy(deep=True)
         for i in range(0,xdim):
             for j in range(0,ydim):
                 #sst0[j,i] = ds_data.analysed_sst[:,j,i].interp(time=xsdate[j,i])
                 sst0[j,i] = ds_all.analysed_sst[:,j,i].sel(time=slice(xsdate[j,i]-np.timedelta64(5,'D'),xsdate[j,i])).max()
+                sst0_clim_anom[j,i] = (ds_all.analysed_sst[:,j,i]-ds_all.analysed_sst_clim[:,j,i]).sel(time=slice(xsdate[j,i]-np.timedelta64(5,'D'),xsdate[j,i])).max()
         ds_all['sst_prestorm']=sst0
-
+        ds_all['sst_prestorm_clim']=sst0_clim_anom
+#create sst anomalies
+        ds_all['sst_anom']=ds_all.analysed_sst-ds_all.analysed_sst_clim
 #now calculate coldwake information
         if abs(ds_all.lon[-1]-ds_all.lon[0])>180:
             ds_all.coords['lon'] = np.mod(ds_all['lon'], 360)
@@ -421,21 +400,24 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
                 #now look for cold wake for 1 day before strom to 5 days after strom
                 #caluclate hours to cold wake, maximum cold wake, hours until it returns to prestorm sst
                 #there is NO filter on wheither coldwake large enough here, just does all points
-                istart,iend = int(storm_index),int(storm_index)+5
+                istart,iend = int(storm_index),int(storm_index)+8
                 if iend>tdim:
                     iend=tdim
-                if np.isnan(subset.sst_prestorm[j,i]):
+                if np.isnan(subset.sst_prestorm_clim[j,i]):
                     continue
-                coldwake_max[j,i] = (subset.analysed_sst[istart:iend,j,i]-subset.sst_prestorm[j,i]).min()
-                if all(np.isnan(subset.analysed_sst[istart:iend,j,i])):
+                #coldwake_max[j,i] = (subset.analysed_sst[istart:iend,j,i]-subset.sst_prestorm[j,i]).min()
+                coldwake_max[j,i] = (subset.sst_anom[istart:iend,j,i]-subset.sst_prestorm_clim[j,i]).min()
+                if all(np.isnan(subset.sst_anom[istart:iend,j,i])):
                     continue
-                itmp = np.argmin(subset.analysed_sst[istart:iend,j,i]-subset.sst_prestorm[j,i]).data
+                itmp = np.argmin(subset.sst_anom[istart:iend,j,i]-subset.sst_prestorm_clim[j,i]).data
                 coldwake_maxindex[j,i]=istart+itmp
                 delay = subset.time[istart+itmp].values-subset.time[istart].values
                 coldwake_hrtomaxcold[j,i]=delay / np.timedelta64(1, 'h')
                 for k in range(istart+itmp,tdim):
-                    sst_change = subset.analysed_sst[k,j,i]-subset.sst_prestorm[j,i]
-                    if sst_change>-0.2:
+                    sst_change = subset.sst_anom[k,j,i]-subset.sst_prestorm_clim[j,i]
+                   # sst_change_clim = subset.analysed_sst_clim[k,j,i]-subset.sst_prestorm_clim[j,i]
+            #NEED TO ADD CLIMATOLOGY SST CHANGE HERE
+                    if sst_change>-0.1:  #changed 2/27 based on dare and mcbride paper criteria
                         break
                 delay = subset.time[k].values-subset.time[istart].values
                 coldwake_recovery[j,i]=delay / np.timedelta64(1, 'D')
