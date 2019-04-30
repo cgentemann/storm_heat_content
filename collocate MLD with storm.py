@@ -74,6 +74,10 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
 #        if input_storm!=inum_storm:
 #            continue
 
+        filename_out = dir_out + str(iyr_storm) + '/' + str(inum_storm).zfill(3) + '_MLD_data_v2.nc'
+        if os.path.exists(filename_out):
+            continue
+
 #        if iyr_storm!=2007: # or iyr_storm<2003:
 #            continue
         print(name,filename)
