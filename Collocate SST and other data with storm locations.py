@@ -170,7 +170,7 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
 #            lyr, idyjl = 2015,1
 #            storm_date = dt.datetime(2015,1,1)
             syr, smon, sdym, sjdy=str(storm_date.year),str(storm_date.month),str(storm_date.day),str(storm_date.timetuple().tm_yday)
-            fname_tem='/CCMP_Wind_Analysis_' + syr + smon.zfill(2) + sdym.zfill(2) + '_V02.0_L3.0_RSS.nc'
+            fname_tem='/CCMP_RT_Wind_Analysis_' + syr + smon.zfill(2) + sdym.zfill(2) + '_V02.0_L3.0_RSS.nc'
             ccmp_filename = dir_ccmp + syr + '/M' + smon.zfill(2) + fname_tem      
             ds=xr.open_dataset(ccmp_filename,drop_variables=['nobs'])
             ds_day = ds.mean(dim='time')     #take average across all 6 hourly data fields
