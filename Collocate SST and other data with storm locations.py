@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import cartopy.crs as ccrs
+
 dir_storm_wmo='F:/data/tc_wakes/ibtracks/year/'
 
 ####################you will need to change some paths here!#####################
@@ -57,9 +58,9 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
             continue
 #        if input_storm!=inum_storm:
 #            continue
-
-#        if iyr_storm!=2007: # or iyr_storm<2003:
+#        if inum_storm<101: # or iyr_storm<2003:
 #            continue
+            
         print(name,filename)
         ds_storm_info = xr.open_dataset(filename)
         lats = ds_storm_info.lat[0,:]
@@ -131,6 +132,9 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
 #sst data   
             fname_tem=syr + smon.zfill(2) + sdym.zfill(2) + '120000-CMC-L4_GHRSST-SSTfnd-CMC0.2deg-GLOB-v02.0-fv02.0.nc'
             filename = dir_cmc + syr + '/' + sjdy.zfill(3) + '/' + fname_tem
+            if not os.path.isfile(filename):
+                fname_tem=syr + smon.zfill(2) + sdym.zfill(2) + '120000-CMC-L4_GHRSST-SSTfnd-CMC0.2deg-GLOB-v02.0-fv03.0.nc'
+                filename = dir_cmc + syr + '/' + sjdy.zfill(3) + '/' + fname_tem
             ds_day=xr.open_dataset(filename,drop_variables=['analysis_error','sea_ice_fraction'])
             if iwrap==1:  #data is -180 to 180 for sst, so need to bring to 0 to 360 when wrapped
                 ds_day.coords['lon'] = np.mod(ds_day['lon'], 360)
@@ -170,8 +174,12 @@ for root, dirs, files in os.walk(dir_storm_info, topdown=False):
 #            lyr, idyjl = 2015,1
 #            storm_date = dt.datetime(2015,1,1)
             syr, smon, sdym, sjdy=str(storm_date.year),str(storm_date.month),str(storm_date.day),str(storm_date.timetuple().tm_yday)
-            fname_tem='/CCMP_RT_Wind_Analysis_' + syr + smon.zfill(2) + sdym.zfill(2) + '_V02.0_L3.0_RSS.nc'
-            ccmp_filename = dir_ccmp + syr + '/M' + smon.zfill(2) + fname_tem      
+            fname_tem='/CCMP_Wind_Analysis_' + syr + smon.zfill(2) + sdym.zfill(2) + '_V02.0_L3.0_RSS.nc'
+            ccmp_filename = dir_ccmp + syr + '/M' + smon.zfill(2) + fname_tem
+            if not os.path.isfile(ccmp_filename):
+                fname_tem='/CCMP_RT_Wind_Analysis_' + syr + smon.zfill(2) + sdym.zfill(2) + '_V02.0_L3.0_RSS.nc'
+                ccmp_filename = dir_ccmp + syr + '/M' + smon.zfill(2) + fname_tem
+                
             ds=xr.open_dataset(ccmp_filename,drop_variables=['nobs'])
             ds_day = ds.mean(dim='time')     #take average across all 6 hourly data fields
             ds_day = ds_day.rename({'longitude':'lon','latitude':'lat'}) #, inplace = True)            
