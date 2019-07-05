@@ -35,12 +35,13 @@ map_lons=np.arange(-180,180,.25)
 imap_lats = map_lats.size
 imap_lons = map_lons.size
   
-#for iyr_storm in range(2002,2018):
 for iyr_storm in range(2002,2018):
+#for iyr_storm in range(2002,2003):
     #init arrays
-    init_data=0
+    init_data,init_data1=0,0
     map_sum,map_cnt,map_max = np.zeros([imap_lats,imap_lons]),np.zeros([imap_lats,imap_lons]),np.zeros([imap_lats,imap_lons])
     map_sum_recov,map_cnt_recov = np.zeros([imap_lats,imap_lons]),np.zeros([imap_lats,imap_lons])
+    map_sum_mld,map_cnt_mld = np.zeros([imap_lats,imap_lons]),np.zeros([imap_lats,imap_lons])
     for inum_storm in range(0,110): 
 #    for inum_storm in range(16,17): 
         filename = dir_out + str(iyr_storm) + '/' + str(inum_storm).zfill(3) + '_interpolated_track.nc'
@@ -72,8 +73,7 @@ for iyr_storm in range(2002,2018):
         ds_all['sst_anomaly']= ssta - sstps    
         
         
-        
-        #remove all data outsice 100km/800km or cold wake >0 or <-10
+#remove all data outsice 100km/800km or cold wake >0 or <-10
         if max_lat<0:
             cond = ((((ds_all.dist_from_storm_km<100) & (ds_all.side_of_storm<=0)) | 
             ((ds_all.dist_from_storm_km<800) & (ds_all.side_of_storm>0))) 
@@ -152,7 +152,6 @@ for iyr_storm in range(2002,2018):
         subset_big['tdif_dy']=tdif_dy2
 
 
- 
         pdim=xdim*ydim
         pdim3=tdim*xdim*ydim
         print(xdim*ydim)
@@ -182,7 +181,7 @@ for iyr_storm in range(2002,2018):
             hist2,mids2=stats.binned_statistic(x,v,'count', bins)[0],0.5*(bins[1:]+bins[:-1])
             sum2=stats.binned_statistic(x,v, 'sum', bins)[0]
 
-        cbin3 = np.arange(0,50)  #dy to recovery
+        cbin3 = np.arange(0,100) #np.arange(0,60)  #dy to recovery
         bins=cbin3
         x= np.reshape(subset.coldwake_dytorecovery.data,(pdim))
         v = np.reshape(subset.coldwake_max.data,(pdim))
@@ -192,7 +191,7 @@ for iyr_storm in range(2002,2018):
             hist3,mids3=stats.binned_statistic(x,v,'count', bins)[0],0.5*(bins[1:]+bins[:-1])
             sum3=stats.binned_statistic(x,v, 'sum', bins)[0]
 
-        cbin4 = np.arange(0,400,10)  #max cold wake as function of MLD at start of storm
+        cbin4 = np.arange(0,400,4) #np.arange(0,600,10) #np.arange(0,400,10)  #max cold wake as function of MLD at start of storm
         bins=cbin4
         x= np.reshape(subset.dbss_obml[0,:,:].data,(pdim))
         v = np.reshape(subset.coldwake_max.data,(pdim))
@@ -213,7 +212,7 @@ for iyr_storm in range(2002,2018):
             sum4a=stats.binned_statistic(x,v, 'sum', bins)[0]
         
         
-        cbin5 = np.arange(0,200,5)  #max cold wake as function of wmo max storm wind speed
+        cbin5 = np.arange(0,200,2)  #max cold wake as function of wmo max storm wind speed
         bins=cbin5
         x= np.reshape(subset.wmo_storm_wind.data,(pdim))
         v = np.reshape(subset.coldwake_max.data,(pdim))
@@ -223,7 +222,7 @@ for iyr_storm in range(2002,2018):
             hist5,mids5=stats.binned_statistic(x,v,'count', bins)[0],0.5*(bins[1:]+bins[:-1])
             sum5=stats.binned_statistic(x,v, 'sum', bins)[0]
 
-        cbin6 = np.arange(0,200,5)  #max cold wake as function of wmo max storm translation speed
+        cbin6 = np.arange(0,200,2)  #max cold wake as function of wmo max storm translation speed
         bins=cbin6
         x= np.reshape(subset.wmo_storm_speed_kmhr.data,(pdim))
         v = np.reshape(subset.coldwake_max.data,(pdim))
@@ -233,7 +232,7 @@ for iyr_storm in range(2002,2018):
             hist6,mids6=stats.binned_statistic(x,v,'count', bins)[0],0.5*(bins[1:]+bins[:-1])
             sum6=stats.binned_statistic(x,v, 'sum', bins)[0]
 
-        cbin7 = np.arange(-10,50,1)  #cold wake recovery as function of time
+        cbin7 = np.arange(-10,90,1)  #cold wake recovery as function of time
         bins = cbin7
         x= np.reshape(subset.tdif_dy.data,(pdim3))
         v = np.reshape(subset.sst_anomaly.data,(pdim3))
@@ -243,7 +242,7 @@ for iyr_storm in range(2002,2018):
             hist7,mids7=stats.binned_statistic(x,v,'count', bins)[0],0.5*(bins[1:]+bins[:-1])
             sum7=stats.binned_statistic(x,v, 'sum', bins)[0]
 
-        cbin7a = np.arange(-10,50,1)  #cold wake recovery as function of time
+        cbin7a = np.arange(-10,90,1)  #cold wake recovery as function of time
         bins = cbin7
         x= np.reshape(subset_big.tdif_dy.data,(pdim3))
         v = np.reshape(subset_big.sst_anomaly.data,(pdim3))
@@ -274,16 +273,76 @@ for iyr_storm in range(2002,2018):
         hist9=stats.binned_statistic_dd(x.T,v,'count', bins=dbins.T)[0]
         sum9=stats.binned_statistic_dd(x.T,v, 'sum', bins=dbins.T)[0]    
 
-#        x1= np.reshape(subset.tdif_dy.data,(pdim))
-#        x2= np.reshape(subset.wmo_storm_wind.data,(pdim))
-#        x=np.vstack((x1,x2))
-#        b1= cbin7 #np.arange(-10,50,1)
-##        b2= cbin5 #np.arange(-10, 0, 0.1)
-#        dbins=np.vstack((b1,b2)).T
-#        v = np.reshape(subset.sst_anomaly.data,(pdim))
-#        hist10=stats.binned_statistic_dd(x.T,v,'count', bins=dbins.T)[0]
-#        sum10=stats.binned_statistic_dd(x.T,v, 'sum', bins=dbins.T)[0]    
+        for itime in range(tdim):  #anomaly as a funcitno of cold wake max, time
+            x1= np.reshape(subset.coldwake_max.data,(pdim))
+            x2= np.reshape(subset.tdif_dy[itime,:,:].data,(pdim))
+            v = np.reshape(subset.sst_anomaly[itime,:,:].data,(pdim))
+            x1 = x1[~np.isnan(v)]
+            x2 = x2[~np.isnan(v)]
+            v = v[~np.isnan(v)]
+            if v.size<2:
+                continue
+            x=np.vstack((x1,x2))
+            b1= cbin1 #np.arange(-10, 0, 0.1)
+            b2= cbin7          
+            dbins=np.vstack((b1,b2)).T
+            hist10=stats.binned_statistic_dd(x.T,v,'count', bins=dbins.T)[0]
+            sum10=stats.binned_statistic_dd(x.T,v, 'sum', bins=dbins.T)[0]    
+
+            x2= np.reshape(subset.tdif_dy[itime,:,:].data,(pdim))
+            x3= np.reshape(subset.coldwake_dytorecovery.data,(pdim))
+            v = np.reshape(subset.sst_anomaly[itime,:,:].data,(pdim))
+            x2 = x2[~np.isnan(v)]
+            x3 = x3[~np.isnan(v)]
+            v = v[~np.isnan(v)]
+            x=np.vstack((x2,x3))
+            b2= cbin7 #np.arange(-10,50,1)
+            b3= cbin3 #np.arange(0,50)
+            dbins=np.vstack((b2,b3)).T
+            hist11=stats.binned_statistic_dd(x.T,v,'count', bins=dbins.T)[0]
+            sum11=stats.binned_statistic_dd(x.T,v, 'sum', bins=dbins.T)[0]               
+
+            x2= np.reshape(subset.tdif_dy[itime,:,:].data,(pdim))
+            x3= np.reshape(subset.dbss_obml[0,:,:].data,(pdim))
+            v = np.reshape(subset.sst_anomaly[itime,:,:].data,(pdim))
+            x2 = x2[~np.isnan(v)]
+            x3 = x3[~np.isnan(v)]
+            v = v[~np.isnan(v)]
+            x=np.vstack((x2,x3))
+            b2= cbin7 #np.arange(-10,50,1)
+            b3= cbin4 #np.arange(0,600,3)
+            dbins=np.vstack((b2,b3)).T
+            hist12=stats.binned_statistic_dd(x.T,v,'count', bins=dbins.T)[0]
+            sum12=stats.binned_statistic_dd(x.T,v, 'sum', bins=dbins.T)[0]               
+
+            x2= np.reshape(subset.tdif_dy[itime,:,:].data,(pdim))
+            x3= np.reshape(subset2.mxldepth[1,:,:].data,(pdim))
+            v = np.reshape(subset.sst_anomaly[itime,:,:].data,(pdim))
+            x2 = x2[~np.isnan(v)]
+            x3 = x3[~np.isnan(v)]
+            v = v[~np.isnan(v)]
+            x=np.vstack((x2,x3))
+            b2= cbin7 #np.arange(-10,50,1)
+            b3= cbin4 #np.arange(0,600,3)
+            dbins=np.vstack((b2,b3)).T
+            hist12a=stats.binned_statistic_dd(x.T,v,'count', bins=dbins.T)[0]
+            sum12a=stats.binned_statistic_dd(x.T,v, 'sum', bins=dbins.T)[0]               
         
+            if init_data1 == 0:
+                sv_sum10,sv_cnt10 = sum10,hist10
+                sv_sum11,sv_cnt11 = sum11,hist11
+                sv_sum12,sv_cnt12 = sum12,hist12
+                sv_sum12a,sv_cnt12a = sum12a,hist12a
+                init_data1=1
+            else:
+                sv_sum10+= sum10
+                sv_cnt10+= hist10           
+                sv_sum11+= sum11
+                sv_cnt11+= hist11           
+                sv_sum12+= sum12
+                sv_cnt12+= hist12           
+                sv_sum12a+= sum12a
+                sv_cnt12a+= hist12a           
         
         if init_data == 0:
             sv_sum1,sv_cnt1,sv_bin1 = sum1,hist1,cbin1
@@ -297,7 +356,6 @@ for iyr_storm in range(2002,2018):
             sv_sum7a,sv_cnt7a,sv_bin7a = sum7a,hist7a,cbin7a
             sv_sum8,sv_cnt8 = sum8,hist8
             sv_sum9,sv_cnt9 = sum9,hist9
- #           sv_sum10,sv_cnt10 = sum10,hist10
             init_data=1
         else:
             sv_sum1+= sum1
@@ -322,27 +380,46 @@ for iyr_storm in range(2002,2018):
             sv_cnt8+= hist8           
             sv_sum9+= sum9
             sv_cnt9+= hist9           
-  #          sv_sum10+= sum10
-  #          sv_cnt10+= hist10           
+           
 
         #put on global map
         tem = subset.coldwake_max.interp(lat=map_lats,lon=map_lons)
-        tem=tem.fillna(0)
-        temc=(tem/tem).fillna(0)
-        map_sum+=tem
-        map_cnt+=temc
-        map_max=np.where(tem.data < map_max, tem,map_max)  #where tem<max put tem value in otherwise leave max
+        temc = tem/tem
+        map_sum = np.nansum(np.dstack((map_sum,tem)),2)
+        map_cnt = np.nansum(np.dstack((map_cnt,temc)),2)
+        
+#        tem=tem.fillna(0)
+#        temc=(tem/tem).fillna(0)
+#        map_sum+=tem
+#        map_cnt+=temc
+#        map_max=np.where(tem.data < map_max, tem,map_max)  #where tem<max put tem value in otherwise leave max
+
         tem = subset.coldwake_dytorecovery.interp(lat=map_lats,lon=map_lons)
-        tem=tem.fillna(0)
-        temc=(tem/tem).fillna(0)
-        map_sum_recov+=tem
-        map_cnt_recov+=temc
+        temc = tem/tem
+        map_sum_recov = np.nansum(np.dstack((map_sum_recov,tem)),2)
+        map_cnt_recov = np.nansum(np.dstack((map_cnt_recov,temc)),2)
+        
+#        tem=tem.fillna(0)
+#        temc=(tem/tem).fillna(0)
+#        map_sum_recov+=tem
+#        map_cnt_recov+=temc
+
+        tem = subset2.mxldepth[1,:,:].interp(lat=map_lats,lon=map_lons)
+        temc = tem/tem
+        map_sum_mld = np.nansum(np.dstack((map_sum_mld,tem)),2)
+        map_cnt_mld = np.nansum(np.dstack((map_cnt_mld,temc)),2)
+#        tem=tem.fillna(0)
+#        temc=(tem/tem).fillna(0)
+#        map_sum_recov+=tem
+#        map_cnt_recov+=temc
 
     m1=xr.DataArray(map_sum, coords={'lat': map_lats, 'lon':map_lons}, dims=('lat', 'lon'))        
     m2=xr.DataArray(map_cnt, coords={'lat': map_lats, 'lon':map_lons}, dims=('lat', 'lon'))        
     m3=xr.DataArray(map_max, coords={'lat': map_lats, 'lon':map_lons}, dims=('lat', 'lon'))        
     m4=xr.DataArray(map_sum_recov, coords={'lat': map_lats, 'lon':map_lons}, dims=('lat', 'lon'))        
     m5=xr.DataArray(map_cnt_recov, coords={'lat': map_lats, 'lon':map_lons}, dims=('lat', 'lon'))        
+    m6=xr.DataArray(map_sum_mld, coords={'lat': map_lats, 'lon':map_lons}, dims=('lat', 'lon'))        
+    m7=xr.DataArray(map_cnt_mld, coords={'lat': map_lats, 'lon':map_lons}, dims=('lat', 'lon'))        
     ds=xr.Dataset(data_vars={'sum1': (('coldw'),sv_sum1),
                              'cnt1': (('coldw'),sv_cnt1),
                              'sum2': (('dymax'),sv_sum2),
@@ -365,11 +442,21 @@ for iyr_storm in range(2002,2018):
                              'cnt8': (('tspd','wnd'),sv_cnt8),
                              'sum9': (('tspd','mld','wnd'),sv_sum9),
                              'cnt9': (('tspd','mld','wnd'),sv_cnt9),
+                             'sum10': (('coldw','dtime'),sv_sum10),
+                             'cnt10': (('coldw','dtime'),sv_cnt10),
+                             'sum11': (('dtime','dyrec'),sv_sum11),
+                             'cnt11': (('dtime','dyrec'),sv_cnt11),
+                             'sum12': (('dtime','mld'),sv_sum12),
+                             'cnt12': (('dtime','mld'),sv_cnt12),
+                             'sum12a': (('dtime','mld'),sv_sum12a),
+                             'cnt12a': (('dtime','mld'),sv_cnt12a),
                                  'map_sum': (('lat','lon'),m1),
                                 'map_cnt': (('lat','lon'),m2),
                                 'map_max': (('lat','lon'),m3),
                                  'map_sum_recov': (('lat','lon'),m4),
-                                'map_cnt_recov': (('lat','lon'),m5)
+                                'map_cnt_recov': (('lat','lon'),m5),
+                                 'map_sum_mld': (('lat','lon'),m6),
+                                'map_cnt_mld': (('lat','lon'),m7)
                                },
                                  coords={'coldw':cbin1[0:-1],
                                          'dymax':cbin2[0:-1],
