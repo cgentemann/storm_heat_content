@@ -191,6 +191,17 @@ for iyr_storm in range(2002,2018):
             hist3,mids3=stats.binned_statistic(x,v,'count', bins)[0],0.5*(bins[1:]+bins[:-1])
             sum3=stats.binned_statistic(x,v, 'sum', bins)[0]
 
+        cbin3a = np.arange(-200,800,25) #distance to coldwake minimum
+        bins=cbin3a
+        x= np.reshape((subset.dist_from_storm_km*subset.side_of_storm).data,(pdim))
+        v = np.reshape(subset.coldwake_max.data,(pdim))
+        x = x[~np.isnan(v)]
+        v = v[~np.isnan(v)]
+        if v.size>0:
+            hist3a,mids3a=stats.binned_statistic(x,v,'count', bins)[0],0.5*(bins[1:]+bins[:-1])
+            sum3a=stats.binned_statistic(x,v, 'sum', bins)[0]
+
+            
         cbin4 = np.arange(0,400,4) #np.arange(0,600,10) #np.arange(0,400,10)  #max cold wake as function of MLD at start of storm
         bins=cbin4
         x= np.reshape(subset.dbss_obml[0,:,:].data,(pdim))
@@ -348,6 +359,7 @@ for iyr_storm in range(2002,2018):
             sv_sum1,sv_cnt1,sv_bin1 = sum1,hist1,cbin1
             sv_sum2,sv_cnt2,sv_bin2 = sum2,hist2,cbin2
             sv_sum3,sv_cnt3,sv_bin3 = sum3,hist3,cbin3
+            sv_sum3a,sv_cnt3a,sv_bin3a = sum3a,hist3a,cbin3a
             sv_sum4,sv_cnt4,sv_bin4 = sum4,hist4,cbin4
             sv_sum4a,sv_cnt4a,sv_bin4a = sum4a,hist4a,cbin4a
             sv_sum5,sv_cnt5,sv_bin5 = sum5,hist5,cbin5
@@ -364,6 +376,8 @@ for iyr_storm in range(2002,2018):
             sv_cnt2+= hist2
             sv_sum3+= sum3
             sv_cnt3+= hist3
+            sv_sum3a+= sum3a
+            sv_cnt3a+= hist3a
             sv_sum4+= sum4
             sv_cnt4+= hist4
             sv_sum4a+= sum4a
@@ -426,6 +440,8 @@ for iyr_storm in range(2002,2018):
                              'cnt2': (('dymax'),sv_cnt2),
                              'sum3': (('dyrec'),sv_sum3),
                              'cnt3': (('dyrec'),sv_cnt3),
+                             'sum3a': (('dist'),sv_sum3a),
+                             'cnt3a': (('dist'),sv_cnt3a),
                              'sum4': (('mld'),sv_sum4),
                              'cnt4': (('mld'),sv_cnt4),
                              'sum4a': (('mld2'),sv_sum4a),
@@ -462,6 +478,7 @@ for iyr_storm in range(2002,2018):
                                          'dymax':cbin2[0:-1],
                                          'dyrec':cbin3[0:-1],
                                          'mld':cbin4[0:-1],
+                                         'dist':cbin3a[0:-1],
                                          'wnd':cbin5[0:-1],
                                          'tspd':cbin6[0:-1],
                                          'dtime':cbin7[0:-1],
